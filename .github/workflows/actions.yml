@@ -1,0 +1,75 @@
+name: postgres-docker
+on:
+  push:
+    branches:
+      - master # Or 'main', depending on your default branch
+  workflow_dispatch: # Optional: allows manual trigger
+
+# Deploy to Pages
+#permissions:
+#  contents: read
+#  pages: write
+#  id-token: write
+#
+#concurrency:
+#  group: "pages"
+#  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.DB_NAME }}
+        ports:
+          - 5432:5432
+
+
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Test database connection
+#        run: |
+#          sudo apt-get install -y postgresql-client
+#          PGPASSWORD=${{ secrets.DB_PASSWORD }} psql -h localhost -U user -d ${{ secrets.DB_NAME }} -c "SELECT 1;"
+
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Test database connection
+        run: |
+          PGPASSWORD=${{ secrets.DB_PASSWORD }} psql -h localhost -U user -d ${{ secrets.DB_NAME }} -c "SELECT 1;"          
+
+      - name: Create Table & Insert Data
+        run: |
+          PGPASSWORD=${{ secrets.DB_PASSWORD }} psql -h localhost -U user -d ${{ secrets.DB_NAME }} -c "CREATE TABLE test(id SERIAL PRIMARY KEY, name VARCHAR(50));"
+          PGPASSWORD=${{ secrets.DB_PASSWORD }} psql -h localhost -U user -d ${{ secrets.DB_NAME }} -c "INSERT INTO test(name) VALUES ('Hello from Actions');"
+
+      - name: Dump Database
+        run: |
+          PGPASSWORD=${{ secrets.DB_PASSWORD }} pg_dump -h localhost -U user -d ${{ secrets.DB_NAME }} -F c -f db.dump
+
+      - name: Upload DB Dump as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-dump
+          path: db.dump
+
+
+#  After the workflow runs, you can download the db-dump artifact from the Actions tab in GitHub and restore it locally.
+
+
+
+
+
+
